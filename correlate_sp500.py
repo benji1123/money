@@ -20,7 +20,7 @@ SP500_JOINT_DATA = './Data/sp500_joined_closes.csv'
 
 '''
 S&P500 companies correlated to each other
-in numpy-array form (500x500-matrix)
+in array-form (500x500-matrix)
 '''
 def make_correlation_data():
     sp500 = pd.read_csv(SP500_JOINT_DATA)

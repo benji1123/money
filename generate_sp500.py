@@ -6,8 +6,11 @@ import os
 import pandas as pd
 import pandas_datareader as web
 
+START = dt.datetime(2018,3,20)
+END = dt.datetime(2020,3,20)
 
-def serialize_sp500_tickers():
+
+def download_sp500_tickers():
     # Wikipedia maintains list of S&P500
     wiki = requests.get(
     	'https://en.wikipedia.org/wiki/List_of_S%26P_500_companies')
@@ -18,7 +21,7 @@ def serialize_sp500_tickers():
         ticker = row.findAll('td')[0].text
         ticker = ticker[:-1]
         sp500tickers.append(ticker)
-    # Maintaining a local-copy for subsequent stock-data extraction 
+    # Maintain local-copy of S&P 500 ticker-names
     with open("Data/sp500tickers.pickle", "wb") as f:
         pickle.dump(sp500tickers, f)
         print('pickle-file made')
@@ -27,14 +30,14 @@ def serialize_sp500_tickers():
 
 ''' 
 Downloading stock-data 
-takes a while, so save it 
+(takes a while, so save it )
 '''
 def save_sp500_stockdata(
 	update_sp500=False, 
 	update_sp500_stockdata=False):
     # S&P500 list changes often
     if update_sp500:
-        sp500tickers = serialize_sp500_tickers()
+        sp500tickers = download_sp500_tickers()
         update_sp500_stockdata = True
     else:
         with open("Data/sp500tickers.pickle", "rb") as f:
@@ -42,15 +45,13 @@ def save_sp500_stockdata(
         if not os.path.exists('Data/stock_data'):
     	    os.makedirs('Data/stock_data')
     # Download to data-dir
-    start = dt.datetime(2018,3,20)
-    end = dt.datetime(2020,3,20)
     if update_sp500_stockdata:
         skipped_compaies = [] # if any
         for company in sp500tickers:
             if not os.path.exists('Data/stock_data/{}.csv'.format(company)):
                 # corrupt data will crash program
                 try:
-                    tickerData = web.DataReader(company, 'yahoo', start, end)
+                    tickerData = web.DataReader(company, 'yahoo', START, END)
                     tickerData.to_csv('Data/stock_data/{}.csv'.format(company))
                     print(company)
                 except:
@@ -60,6 +61,7 @@ def save_sp500_stockdata(
                 print('We already have Data/stock_data/{}.csv'.format(company))
         print('stock-data download complete\nskipped: ',
          ' '.join(skipped_compaies))
+
 
 '''
 Build one SP500 dataframe,
@@ -75,7 +77,7 @@ def build_sp500_dataframe():
         if count % 6 == 0:
     	    print(count)
         try:
-        	# Just 'adj close' of each company will be used
+        	# companies will be represented by 'adj close'
             stock_col = pd.read_csv('Data/stock_data/{}.csv'.format(ticker))
             stock_col.set_index('Date', inplace=True)
             stock_col.rename(columns = {'Adj Close':ticker}, inplace=True)
@@ -89,12 +91,13 @@ def build_sp500_dataframe():
                 sp500_df = stock_col
             else:
                 sp500_df = sp500_df.join(stock_col, how='outer')
-        
         except FileNotFoundError:
             print('skipping {} because {}.csv is \
             	missing/corrupt'.format(ticker, ticker))
-        
+    
     sp500_df.to_csv('Data/sp500_joined_closes.csv')
 
 
+# ........ demo ...........
 build_sp500_dataframe()
+# ........ demo ...........
